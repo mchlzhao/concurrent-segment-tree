@@ -1,5 +1,5 @@
-#ifndef _SEG_TREE_COMMON_H
-#define _SEG_TREE_COMMON_H
+#ifndef _SEG_TREE_H
+#define _SEG_TREE_H
 
 typedef struct _seg_tree_node_t {
 	int value;
