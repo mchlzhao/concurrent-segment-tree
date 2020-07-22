@@ -6,18 +6,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-#ifndef max
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#endif
-
-typedef struct _seg_tree_node_t {
-	int value;
-	int lazy;
-	int ran_l, ran_r;
-	bool is_child;
-	// ??? can we get rid of _ here
-	struct _seg_tree_node_t *lc, *rc;
-} seg_tree_node_t;
+#include "common.h"
+#include "seg-tree-common.h"
 
 // recursively initialises segment tree nodes
 void _seg_tree_init(seg_tree_node_t *node, int ran_l, int ran_r) {
@@ -35,31 +25,6 @@ void _seg_tree_init(seg_tree_node_t *node, int ran_l, int ran_r) {
 		_seg_tree_init(node->lc, ran_l, ran_m);
 		_seg_tree_init(node->rc, ran_m, ran_r);
 	}
-}
-
-// pointer to root node to be stored in root
-void seg_tree_init(seg_tree_node_t **root, int range) {
-	*root = (seg_tree_node_t*) malloc(sizeof(seg_tree_node_t));
-	_seg_tree_init(*root, 0, range);
-}
-
-// recursively destroys segment tree nodes
-void seg_tree_destroy(seg_tree_node_t *root) {
-	// nodes are guaranteed to have either zero or two children
-	if (!root->is_child) {
-		seg_tree_destroy(root->lc);
-		seg_tree_destroy(root->rc);
-	}
-	free(root);
-}
-
-void _seg_tree_clean_node(seg_tree_node_t *node) {
-	node->value += node->lazy;
-	if (!node->is_child) {
-		node->lc->lazy += node->lazy;
-		node->rc->lazy += node->lazy;
-	}
-	node->lazy = 0;
 }
 
 int _seg_tree_query(seg_tree_node_t *node, int que_l, int que_r) {
@@ -85,17 +50,6 @@ int _seg_tree_query(seg_tree_node_t *node, int que_l, int que_r) {
 	return ret;
 }
 
-void seg_tree_check_bounds(seg_tree_node_t *root, int ran_l, int ran_r) {
-	assert(ran_l < ran_r);
-	assert(root->ran_l <= ran_l);
-	assert(ran_r <= root->ran_r);
-}
-
-int seg_tree_query(seg_tree_node_t *root, int que_l, int que_r) {
-	seg_tree_check_bounds(root, que_l, que_r);
-	return _seg_tree_query(root, que_l, que_r);
-}
-
 void _seg_tree_update(seg_tree_node_t *node, int ran_l, int ran_r, int inc) {
 	_seg_tree_clean_node(node);
 	if (ran_l <= node->ran_l && node->ran_r <= ran_r) {
@@ -114,11 +68,6 @@ void _seg_tree_update(seg_tree_node_t *node, int ran_l, int ran_r, int inc) {
 		}
 		node->value = max(node->lc->value, node->rc->value);
 	}
-}
-
-void seg_tree_update(seg_tree_node_t *root, int ran_l, int ran_r, int inc) {
-	seg_tree_check_bounds(root, ran_l, ran_r);
-	_seg_tree_update(root, ran_l, ran_r, inc);
 }
 
 int main(int argc, char *argv[]) {
