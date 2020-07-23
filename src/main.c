@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 	assert(gettimeofday(&t1, NULL) == 0);
 
 	for (int i = 0; i < num_threads; i++) {
-		pthread_create(&p[i], NULL, worker, &wargs);
+		pthread_create(&p[i], NULL, worker, &wargs[i]);
 	}
 	for (int i = 0; i < num_threads; i++) {
 		pthread_join(p[i], NULL);

@@ -17,6 +17,8 @@ def query(a, b):
 	return max_num
 
 done = 0
+has_a_wrong = False
+is_wrong = False
 
 for line in sys.stdin:
 	if DEBUG:
@@ -29,8 +31,12 @@ for line in sys.stdin:
 	if operation == 'q':
 		ans = query(args[0], args[1])
 		if ans != args[2]:
-			print("WRONG ON LINE %d" % done)
-			sys.exit(1)
+			if not has_a_wrong:
+				print("FIRST WRONG ON LINE %d" % done)
+			has_a_wrong = True
+			is_wrong = True
+		else:
+			is_wrong = False
 	else:
 		update(args[0], args[1], args[2])
 		if DEBUG:
@@ -42,4 +48,10 @@ for line in sys.stdin:
 
 	done += 1
 
-print("ALL CORRECT %d LINES" % done)
+if is_wrong:
+	print("LAST ONE IS WRONG\n")
+else:
+	print("LAST ONE IS RIGHT\n")
+
+if not has_a_wrong:
+	print("ALL CORRECT %d LINES" % done)

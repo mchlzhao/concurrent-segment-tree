@@ -16,9 +16,9 @@ void *worker(void *args) {
 	ops_t *cur_op = wargs->ops_list.head;
 	for (int i = 0; i < wargs->ops_list.num_ops; i++) {
 		if (cur_op->is_query) {
+			int ret = seg_tree_query(wargs->tree, cur_op->ran_l, cur_op->ran_r);
 			printif(wargs->do_print, "q %d %d %d\n",
-					cur_op->ran_l, cur_op->ran_r,
-					seg_tree_query(wargs->tree, cur_op->ran_l, cur_op->ran_r));
+					cur_op->ran_l, cur_op->ran_r, ret);
 		} else {
 			seg_tree_update(wargs->tree, cur_op->ran_l, cur_op->ran_r,
 					cur_op->inc);

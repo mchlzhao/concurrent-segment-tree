@@ -6,6 +6,7 @@ typedef struct _seg_tree_node_t seg_tree_node_t;
 typedef struct _seg_tree_t {
 	seg_tree_node_t *root;
 	int range;
+	pthread_rwlock_t big_lock;
 } seg_tree_t;
 
 void seg_tree_init(seg_tree_t *tree, int range);
