@@ -1,7 +1,7 @@
 import math
 import sys
 
-RANGE = 4
+RANGE = 100
 DEBUG = False
 
 array = [0]*RANGE

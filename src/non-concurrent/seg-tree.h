@@ -1,6 +1,8 @@
 #ifndef _SEG_TREE_H
 #define _SEG_TREE_H
 
+typedef struct _seg_tree_node_t seg_tree_node_t;
+
 void _seg_tree_init(seg_tree_node_t *node, int ran_l, int ran_r);
 
 void _seg_tree_destroy(seg_tree_node_t *root);

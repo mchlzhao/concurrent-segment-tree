@@ -1,8 +1,9 @@
+#include <assert.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "common.h"
@@ -17,6 +18,8 @@ void usage_error(char *prog) {
 }
 
 int main(int argc, char *argv[]) {
+	srand(0);
+
 	int range = -1;
 	int num_ops = -1;
 	int num_threads = -1;
@@ -45,12 +48,9 @@ int main(int argc, char *argv[]) {
 				usage_error(argv[0]);
 		}
 	}
-
 	if (range < 0 || num_ops < 0 || num_threads < 0) {
 		usage_error(argv[0]);
 	}
-
-	srand(0);
 
 	seg_tree_t tree;
 	seg_tree_init(&tree, range);
@@ -62,10 +62,23 @@ int main(int argc, char *argv[]) {
 		wargs[i].tree = &tree;
 		wargs[i].do_print = do_print;
 		ops_list_init(&wargs[i].ops_list, num_ops, range);
+	}
+
+	struct timeval t1, t2;
+	assert(gettimeofday(&t1, NULL) == 0);
+
+	for (int i = 0; i < num_threads; i++) {
 		pthread_create(&p[i], NULL, worker, &wargs);
 	}
 	for (int i = 0; i < num_threads; i++) {
 		pthread_join(p[i], NULL);
+	}
+
+	assert(gettimeofday(&t2, NULL) == 0);
+
+	if (do_clock) {
+		printf("total time: %.3f\n", t2.tv_sec-t1.tv_sec +
+				(t2.tv_usec-t1.tv_usec) / 1e6);
 	}
 
 	seg_tree_destroy(&tree);
