@@ -16,7 +16,7 @@ void ops_list_init(ops_list_t *ops_list, int num_ops, int range) {
 		cur_op->ran_l = cur_op->ran_r = cur_op->inc = 0;
 		while (cur_op->ran_l >= cur_op->ran_r) {
 			cur_op->ran_l = rand()%range;
-			cur_op->ran_r = rand()%range;
+			cur_op->ran_r = rand()%range+1;
 		}
 		if (!cur_op->is_query) {
 			cur_op->inc = rand()%(INC_MAX-INC_MIN+1) + INC_MIN;
