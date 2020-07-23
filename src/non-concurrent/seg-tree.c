@@ -40,13 +40,13 @@ void seg_tree_init(seg_tree_t *tree, int range) {
 }
 
 // recursively destroys segment tree nodes
-void _seg_tree_destroy(seg_tree_node_t *root) {
+void _seg_tree_destroy(seg_tree_node_t *node) {
 	// nodes are guaranteed to have either zero or two children
-	if (!root->is_child) {
-		_seg_tree_destroy(root->lc);
-		_seg_tree_destroy(root->rc);
+	if (!node->is_child) {
+		_seg_tree_destroy(node->lc);
+		_seg_tree_destroy(node->rc);
 	}
-	free(root);
+	free(node);
 }
 
 void seg_tree_destroy(seg_tree_t *tree) {
@@ -54,7 +54,7 @@ void seg_tree_destroy(seg_tree_t *tree) {
 }
 
 void _seg_tree_clean_node(seg_tree_node_t *node) {
-	node->value += node->lazy;
+	node->value += node->lazy * (node->ran_r-node->ran_l);
 	if (!node->is_child) {
 		node->lc->lazy += node->lazy;
 		node->rc->lazy += node->lazy;
@@ -73,14 +73,14 @@ int _seg_tree_query(seg_tree_node_t *node, int que_l, int que_r) {
 	int ret;
 	if (node->ran_r <= que_l || que_r <= node->ran_l) {
 		// query range does not intersect node range
-		ret = -999999999;
+		ret = 0;
 	} else if (que_l <= node->ran_l && node->ran_r <= que_r) {
 		// query range fully encapsulates node range
 		ret = node->value;
 	} else {
 		// query range intersects both halves of current node range
-		ret = max(_seg_tree_query(node->lc, que_l, que_r),
-				_seg_tree_query(node->rc, que_l, que_r));
+		ret = _seg_tree_query(node->lc, que_l, que_r) + 
+				_seg_tree_query(node->rc, que_l, que_r);
 	}
 	return ret;
 }
@@ -100,7 +100,7 @@ void _seg_tree_update(seg_tree_node_t *node, int ran_l, int ran_r, int inc) {
 		// query range intersects node range, but does not fully encapsulate
 		_seg_tree_update(node->lc, ran_l, ran_r, inc);
 		_seg_tree_update(node->rc, ran_l, ran_r, inc);
-		node->value = max(node->lc->value, node->rc->value);
+		node->value = node->lc->value + node->rc->value;
 	}
 }
 

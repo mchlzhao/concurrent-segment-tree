@@ -1,4 +1,3 @@
-import math
 import sys
 
 RANGE = 100
@@ -11,10 +10,10 @@ def update(a, b, c):
 		array[i] += c
 
 def query(a, b):
-	max_num = -math.inf
+	sum = 0
 	for i in range(a, b):
-		max_num = max(max_num, array[i])
-	return max_num
+		sum += array[i]
+	return sum
 
 done = 0
 has_a_wrong = False

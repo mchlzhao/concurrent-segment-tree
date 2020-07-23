@@ -14,6 +14,8 @@ typedef struct _seg_tree_node_t {
 	int ran_l, ran_r;
 	bool is_child;
 	struct _seg_tree_node_t *lc, *rc;
+	pthread_rwlock_t rwlock;
+	pthread_mutex_t lock;
 } seg_tree_node_t;
 
 // recursively initialises segment tree nodes
@@ -22,6 +24,8 @@ void _seg_tree_init(seg_tree_node_t *node, int ran_l, int ran_r) {
 	node->ran_l = ran_l;
 	node->ran_r = ran_r;
 	node->is_child = false;
+	pthread_rwlock_init(&node->rwlock);
+	pthread_mutex_init(&node->lock);
 	if (ran_l == ran_r-1) {
 		node->lc = node->rc = NULL;
 		node->is_child = true;
@@ -38,23 +42,23 @@ void _seg_tree_init(seg_tree_node_t *node, int ran_l, int ran_r) {
 void seg_tree_init(seg_tree_t *tree, int range) {
 	tree->root = (seg_tree_node_t*) malloc(sizeof(seg_tree_node_t));
 	tree->range = range;
-	pthread_rwlock_init(&tree->big_lock, NULL);
 	_seg_tree_init(tree->root, 0, range);
 }
 
 // recursively destroys segment tree nodes
-void _seg_tree_destroy(seg_tree_node_t *root) {
+void _seg_tree_destroy(seg_tree_node_t *node) {
 	// nodes are guaranteed to have either zero or two children
-	if (!root->is_child) {
-		_seg_tree_destroy(root->lc);
-		_seg_tree_destroy(root->rc);
+	pthread_rwlock_destroy(&node->rwlock);
+	pthread_mutex_destroy(&node->lock);
+	if (!node->is_child) {
+		_seg_tree_destroy(node->lc);
+		_seg_tree_destroy(node->rc);
 	}
 	free(root);
 }
 
 void seg_tree_destroy(seg_tree_t *tree) {
 	_seg_tree_destroy(tree->root);
-	pthread_rwlock_destroy(&tree->big_lock);
 }
 
 void _seg_tree_clean_node(seg_tree_node_t *node) {
@@ -77,24 +81,22 @@ int _seg_tree_query(seg_tree_node_t *node, int que_l, int que_r) {
 	int ret;
 	if (node->ran_r <= que_l || que_r <= node->ran_l) {
 		// query range does not intersect node range
-		ret = -999999999;
+		ret = 0;
 	} else if (que_l <= node->ran_l && node->ran_r <= que_r) {
 		// query range fully encapsulates node range
 		ret = node->value;
 	} else {
 		// query range intersects both halves of current node range
-		ret = max(_seg_tree_query(node->lc, que_l, que_r),
-				_seg_tree_query(node->rc, que_l, que_r));
+		ret = _seg_tree_query(node->lc, que_l, que_r) +
+				_seg_tree_query(node->rc, que_l, que_r);
 	}
 	return ret;
 }
 
 int seg_tree_query(seg_tree_t *tree, int que_l, int que_r) {
 	_seg_tree_check_bounds(tree->root, que_l, que_r);
-	pthread_rwlock_wrlock(&tree->big_lock);
 	int ret = _seg_tree_query(tree->root, que_l, que_r);
 	// printf("q %d %d %d\n", que_l, que_r, ret);
-	pthread_rwlock_unlock(&tree->big_lock);
 	return ret;
 }
 
@@ -108,14 +110,12 @@ void _seg_tree_update(seg_tree_node_t *node, int ran_l, int ran_r, int inc) {
 		// query range intersects node range, but does not fully encapsulate
 		_seg_tree_update(node->lc, ran_l, ran_r, inc);
 		_seg_tree_update(node->rc, ran_l, ran_r, inc);
-		node->value = max(node->lc->value, node->rc->value);
+		node->value = node->lc->value + node->rc->value;
 	}
 }
 
 void seg_tree_update(seg_tree_t *tree, int ran_l, int ran_r, int inc) {
 	_seg_tree_check_bounds(tree->root, ran_l, ran_r);
-	pthread_rwlock_wrlock(&tree->big_lock);
 	_seg_tree_update(tree->root, ran_l, ran_r, inc);
 	// printf("u %d %d %d\n", ran_l, ran_r, inc);
-	pthread_rwlock_unlock(&tree->big_lock);
 }
