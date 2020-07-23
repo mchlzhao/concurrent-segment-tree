@@ -19,7 +19,7 @@ void _seg_tree_init(seg_tree_node_t *node, int ran_l, int ran_r) {
 	node->ran_l = ran_l;
 	node->ran_r = ran_r;
 	node->is_child = false;
-	if (ran_l== ran_r-1) {
+	if (ran_l == ran_r-1) {
 		node->lc = node->rc = NULL;
 		node->is_child = true;
 	} else {
@@ -70,22 +70,16 @@ void _seg_tree_check_bounds(seg_tree_node_t *root, int ran_l, int ran_r) {
 int _seg_tree_query(seg_tree_node_t *node, int que_l, int que_r) {
 	_seg_tree_clean_node(node);
 	int ret;
-	if (que_l <= node->ran_l && node->ran_r <= que_r) {
+	if (node->ran_r <= que_l || que_r <= node->ran_l) {
+		// query range does not intersect node range
+		ret = -999999999;
+	} else if (que_l <= node->ran_l && node->ran_r <= que_r) {
 		// query range fully encapsulates node range
 		ret = node->value;
 	} else {
-		int ran_m = (node->ran_l+node->ran_r)/2;
-		if (que_l < ran_m && ran_m < que_r) {
-			// query range intersects both halves of current node range
-			ret = max(_seg_tree_query(node->lc, que_l, que_r),
-					_seg_tree_query(node->rc, que_l, que_r));
-		} else if (que_r <= ran_m) {
-			// query range falls within left child's range
-			ret = _seg_tree_query(node->lc, que_l, que_r);
-		} else {
-			// query range falls within right child's range
-			ret = _seg_tree_query(node->rc, que_l, que_r);
-		}
+		// query range intersects both halves of current node range
+		ret = max(_seg_tree_query(node->lc, que_l, que_r),
+				_seg_tree_query(node->rc, que_l, que_r));
 	}
 	return ret;
 }
@@ -101,16 +95,10 @@ void _seg_tree_update(seg_tree_node_t *node, int ran_l, int ran_r, int inc) {
 		// query range fully encapsulates node range
 		node->lazy += inc;
 		_seg_tree_clean_node(node);
-	} else {
-		int ran_m = (node->ran_l+node->ran_r)/2;
-		if (ran_l < ran_m) {
-			// query range intersects left child's range
-			_seg_tree_update(node->lc, ran_l, ran_r, inc);
-		}
-		if (ran_m < ran_r) {
-			// query range intersects right child's range
-			_seg_tree_update(node->rc, ran_l, ran_r, inc);
-		}
+	} else if (node->ran_r > ran_l && ran_r > node->ran_l) {
+		// query range intersects node range, but does not fully encapsulate
+		_seg_tree_update(node->lc, ran_l, ran_r, inc);
+		_seg_tree_update(node->rc, ran_l, ran_r, inc);
 		node->value = max(node->lc->value, node->rc->value);
 	}
 }
