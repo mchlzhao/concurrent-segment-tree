@@ -5,4 +5,6 @@
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
+#define printif(a, b...) if (a) { printf(b); }
+
 #endif

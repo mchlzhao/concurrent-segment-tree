@@ -5,7 +5,10 @@
 #include <time.h>
 
 #include "common.h"
+#include "generate-ops.h"
 #include "seg-tree.h"
+
+#include "worker.c"
 
 int main(int argc, char *argv[]) {
 	if (argc != 4) {
@@ -16,25 +19,26 @@ int main(int argc, char *argv[]) {
 	int range = atoi(argv[1]);
 	int num_ops = atoi(argv[2]);
 	int num_threads = atoi(argv[3]);
+	bool print = true;
 
-	seg_tree_node_t *root;
-	seg_tree_init(&root, range);
+	seg_tree_t tree;
+	seg_tree_init(&tree, range);
 
-	for (int i = 0; i < num_ops; i++) {
-		bool is_query = rand()%2;
-		int ran_l = -1, ran_r = -1;
-		while (ran_l >= ran_r) {
-			ran_l = rand()%range;
-			ran_r = rand()%range;
-		}
-		if (is_query) {
-			printf("queried %d %d = %d\n", ran_l, ran_r, seg_tree_query(root, ran_l, ran_r));
-		} else {
-			int inc = rand()%11 - 5;
-			seg_tree_update(root, ran_l, ran_r, inc);
-			printf("updated %d %d by %d\n", ran_l, ran_r, inc);
-		}
+	worker_args_t wargs[num_threads];
+
+	pthread_t p[num_threads];
+	for (int i = 0; i < num_threads; i++) {
+		wargs[i].tree = &tree;
+		wargs[i].print = print;
+		ops_list_init(&wargs[i].ops_list, num_ops, range);
+		pthread_create(&p[i], NULL, worker, &wargs);
+	}
+	for (int i = 0; i < num_threads; i++) {
+		pthread_join(p[i], NULL);
 	}
 
-	seg_tree_destroy(root);
+	seg_tree_destroy(&tree);
+	for (int i = 0; i < num_threads; i++) {
+		ops_list_destroy(&wargs[i].ops_list);
+	}
 }
