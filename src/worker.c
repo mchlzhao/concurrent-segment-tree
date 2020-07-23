@@ -2,7 +2,7 @@
 #include <stdbool.h>
 
 #include "common.h"
-#include "seg-tree.h"
+#include "seg-tree-interface.h"
 #include "generate-ops.h"
 
 typedef struct _worker_args_t {

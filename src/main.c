@@ -7,7 +7,7 @@
 
 #include "common.h"
 #include "generate-ops.h"
-#include "seg-tree.h"
+#include "seg-tree-interface.h"
 
 #include "worker.c"
 

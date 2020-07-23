@@ -2,7 +2,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "common.h"
+#include "../common.h"
+#include "../seg-tree-interface.h"
 #include "seg-tree.h"
 
 typedef struct _seg_tree_node_t {
