@@ -14,7 +14,6 @@ typedef struct _seg_tree_node_t {
 	int ran_l, ran_r;
 	bool is_child;
 	struct _seg_tree_node_t *lc, *rc;
-	pthread_rwlock_t rwlock;
 	pthread_mutex_t lock;
 } seg_tree_node_t;
 
@@ -24,8 +23,7 @@ void _seg_tree_init(seg_tree_node_t *node, int ran_l, int ran_r) {
 	node->ran_l = ran_l;
 	node->ran_r = ran_r;
 	node->is_child = false;
-	pthread_rwlock_init(&node->rwlock);
-	pthread_mutex_init(&node->lock);
+	pthread_mutex_init(&node->lock, NULL);
 	if (ran_l == ran_r-1) {
 		node->lc = node->rc = NULL;
 		node->is_child = true;
@@ -48,13 +46,12 @@ void seg_tree_init(seg_tree_t *tree, int range) {
 // recursively destroys segment tree nodes
 void _seg_tree_destroy(seg_tree_node_t *node) {
 	// nodes are guaranteed to have either zero or two children
-	pthread_rwlock_destroy(&node->rwlock);
-	pthread_mutex_destroy(&node->lock);
 	if (!node->is_child) {
 		_seg_tree_destroy(node->lc);
 		_seg_tree_destroy(node->rc);
 	}
-	free(root);
+	pthread_mutex_destroy(&node->lock);
+	free(node);
 }
 
 void seg_tree_destroy(seg_tree_t *tree) {
@@ -62,6 +59,7 @@ void seg_tree_destroy(seg_tree_t *tree) {
 }
 
 void _seg_tree_clean_node(seg_tree_node_t *node) {
+	if (node->lazy == 0) return;
 	node->value += node->lazy;
 	if (!node->is_child) {
 		node->lc->lazy += node->lazy;
@@ -82,11 +80,17 @@ int _seg_tree_query(seg_tree_node_t *node, int que_l, int que_r) {
 	if (node->ran_r <= que_l || que_r <= node->ran_l) {
 		// query range does not intersect node range
 		ret = 0;
+		pthread_mutex_unlock(&node->lock);
 	} else if (que_l <= node->ran_l && node->ran_r <= que_r) {
 		// query range fully encapsulates node range
 		ret = node->value;
+		pthread_mutex_unlock(&node->lock);
 	} else {
 		// query range intersects both halves of current node range
+		pthread_mutex_lock(&node->lc->lock);
+		pthread_mutex_lock(&node->rc->lock);
+		pthread_mutex_unlock(&node->lock);
+
 		ret = _seg_tree_query(node->lc, que_l, que_r) +
 				_seg_tree_query(node->rc, que_l, que_r);
 	}
@@ -95,6 +99,7 @@ int _seg_tree_query(seg_tree_node_t *node, int que_l, int que_r) {
 
 int seg_tree_query(seg_tree_t *tree, int que_l, int que_r) {
 	_seg_tree_check_bounds(tree->root, que_l, que_r);
+	pthread_mutex_lock(&tree->root->lock);
 	int ret = _seg_tree_query(tree->root, que_l, que_r);
 	// printf("q %d %d %d\n", que_l, que_r, ret);
 	return ret;
@@ -106,16 +111,26 @@ void _seg_tree_update(seg_tree_node_t *node, int ran_l, int ran_r, int inc) {
 		// query range fully encapsulates node range
 		node->lazy += inc;
 		_seg_tree_clean_node(node);
+
+		pthread_mutex_unlock(&node->lock);
 	} else if (node->ran_r > ran_l && ran_r > node->ran_l) {
 		// query range intersects node range, but does not fully encapsulate
+		node->value += inc * (min(ran_r, node->ran_r) - max(ran_l, node->ran_l));
+
+		pthread_mutex_lock(&node->lc->lock);
+		pthread_mutex_lock(&node->rc->lock);
+		pthread_mutex_unlock(&node->lock);
+
 		_seg_tree_update(node->lc, ran_l, ran_r, inc);
 		_seg_tree_update(node->rc, ran_l, ran_r, inc);
-		node->value = node->lc->value + node->rc->value;
+	} else {
+		pthread_mutex_unlock(&node->lock);
 	}
 }
 
 void seg_tree_update(seg_tree_t *tree, int ran_l, int ran_r, int inc) {
 	_seg_tree_check_bounds(tree->root, ran_l, ran_r);
+	pthread_mutex_lock(&tree->root->lock);
 	_seg_tree_update(tree->root, ran_l, ran_r, inc);
 	// printf("u %d %d %d\n", ran_l, ran_r, inc);
 }
