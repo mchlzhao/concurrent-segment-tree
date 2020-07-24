@@ -60,7 +60,7 @@ void seg_tree_destroy(seg_tree_t *tree) {
 
 void _seg_tree_clean_node(seg_tree_node_t *node) {
 	if (node->lazy == 0) return;
-	node->value += node->lazy;
+	node->value += node->lazy * (node->ran_r-node->ran_l);
 	if (!node->is_child) {
 		node->lc->lazy += node->lazy;
 		node->rc->lazy += node->lazy;
