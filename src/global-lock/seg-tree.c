@@ -90,7 +90,7 @@ int seg_tree_query(seg_tree_t *tree, int que_l, int que_r) {
 	_seg_tree_check_bounds(tree->root, que_l, que_r);
 	pthread_rwlock_wrlock(&tree->big_lock);
 	int ret = _seg_tree_query(tree->root, que_l, que_r, 0);
-	printf("q %d %d %d\n", que_l, que_r, ret);
+	// printf("q %d %d %d\n", que_l, que_r, ret);
 	pthread_rwlock_unlock(&tree->big_lock);
 	return ret;
 }
@@ -121,6 +121,6 @@ void seg_tree_update(seg_tree_t *tree, int ran_l, int ran_r, int inc) {
 	_seg_tree_check_bounds(tree->root, ran_l, ran_r);
 	pthread_rwlock_wrlock(&tree->big_lock);
 	_seg_tree_update(tree->root, ran_l, ran_r, inc, 0);
-	printf("u %d %d %d\n", ran_l, ran_r, inc);
+	// printf("u %d %d %d\n", ran_l, ran_r, inc);
 	pthread_rwlock_unlock(&tree->big_lock);
 }
