@@ -57,13 +57,11 @@ void seg_tree_destroy(seg_tree_t *tree) {
 	pthread_rwlock_destroy(&tree->big_lock);
 }
 
-void _seg_tree_clean_node(seg_tree_node_t *node) {
-	node->value += node->lazy * (node->ran_r-node->ran_l);
+void _seg_tree_push_lazy(seg_tree_node_t *node, int lazy) {
 	if (!node->is_child) {
-		node->lc->lazy += node->lazy;
-		node->rc->lazy += node->lazy;
+		node->lc->lazy += lazy;
+		node->rc->lazy += lazy;
 	}
-	node->lazy = 0;
 }
 
 void _seg_tree_check_bounds(seg_tree_node_t *root, int ran_l, int ran_r) {
@@ -72,19 +70,24 @@ void _seg_tree_check_bounds(seg_tree_node_t *root, int ran_l, int ran_r) {
 	assert(ran_r <= root->ran_r);
 }
 
-int _seg_tree_query(seg_tree_node_t *node, int que_l, int que_r) {
-	_seg_tree_clean_node(node);
+int _seg_tree_query(seg_tree_node_t *node, int que_l, int que_r, int lazy_sum) {
+	lazy_sum += node->lazy;
+	node->lazy = 0;
+	node->value += lazy_sum * (node->ran_r-node->ran_l);
+
 	int ret;
 	if (node->ran_r <= que_l || que_r <= node->ran_l) {
 		// query range does not intersect node range
 		ret = 0;
+		_seg_tree_push_lazy(node, lazy_sum);
 	} else if (que_l <= node->ran_l && node->ran_r <= que_r) {
 		// query range fully encapsulates node range
 		ret = node->value;
+		_seg_tree_push_lazy(node, lazy_sum);
 	} else {
 		// query range intersects both halves of current node range
-		ret = _seg_tree_query(node->lc, que_l, que_r) +
-				_seg_tree_query(node->rc, que_l, que_r);
+		ret = _seg_tree_query(node->lc, que_l, que_r, lazy_sum) +
+				_seg_tree_query(node->rc, que_l, que_r, lazy_sum);
 	}
 	return ret;
 }
@@ -92,30 +95,37 @@ int _seg_tree_query(seg_tree_node_t *node, int que_l, int que_r) {
 int seg_tree_query(seg_tree_t *tree, int que_l, int que_r) {
 	_seg_tree_check_bounds(tree->root, que_l, que_r);
 	pthread_rwlock_wrlock(&tree->big_lock);
-	int ret = _seg_tree_query(tree->root, que_l, que_r);
+	int ret = _seg_tree_query(tree->root, que_l, que_r, 0);
 	// printf("q %d %d %d\n", que_l, que_r, ret);
 	pthread_rwlock_unlock(&tree->big_lock);
 	return ret;
 }
 
-void _seg_tree_update(seg_tree_node_t *node, int ran_l, int ran_r, int inc) {
-	_seg_tree_clean_node(node);
+void _seg_tree_update(seg_tree_node_t *node, int ran_l, int ran_r, int inc,
+		int lazy_sum) {
+
+	lazy_sum += node->lazy;
+	node->lazy = 0;
+	node->value += lazy_sum * (node->ran_r-node->ran_l);
+
 	if (ran_l <= node->ran_l && node->ran_r <= ran_r) {
 		// query range fully encapsulates node range
-		node->lazy += inc;
-		_seg_tree_clean_node(node);
+		node->value += inc * (node->ran_r-node->ran_l);
+		_seg_tree_push_lazy(node, lazy_sum+inc);
 	} else if (node->ran_r > ran_l && ran_r > node->ran_l) {
 		// query range intersects node range, but does not fully encapsulate
-		_seg_tree_update(node->lc, ran_l, ran_r, inc);
-		_seg_tree_update(node->rc, ran_l, ran_r, inc);
+		_seg_tree_update(node->lc, ran_l, ran_r, inc, lazy_sum);
+		_seg_tree_update(node->rc, ran_l, ran_r, inc, lazy_sum);
 		node->value = node->lc->value + node->rc->value;
+	} else {
+		_seg_tree_push_lazy(node, lazy_sum);
 	}
 }
 
 void seg_tree_update(seg_tree_t *tree, int ran_l, int ran_r, int inc) {
 	_seg_tree_check_bounds(tree->root, ran_l, ran_r);
 	pthread_rwlock_wrlock(&tree->big_lock);
-	_seg_tree_update(tree->root, ran_l, ran_r, inc);
+	_seg_tree_update(tree->root, ran_l, ran_r, inc, 0);
 	// printf("u %d %d %d\n", ran_l, ran_r, inc);
 	pthread_rwlock_unlock(&tree->big_lock);
 }
