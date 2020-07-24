@@ -18,7 +18,7 @@ void usage_error(char *prog) {
 }
 
 int main(int argc, char *argv[]) {
-	srand(0);
+	srand(time(0));
 
 	int range = -1;
 	int num_ops = -1;
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
 	assert(gettimeofday(&t2, NULL) == 0);
 
 	if (do_clock) {
-		printf("total time: %.3f\n", t2.tv_sec-t1.tv_sec +
+		printf("total time: %.3fs\n", t2.tv_sec-t1.tv_sec +
 				(t2.tv_usec-t1.tv_usec) / 1e6);
 	}
 

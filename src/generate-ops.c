@@ -1,5 +1,3 @@
-#include <assert.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -7,7 +5,6 @@
 
 void ops_list_init(ops_list_t *ops_list, int num_ops, int range) {
 	ops_list->head = (ops_t*) malloc(num_ops * sizeof(ops_t));
-	assert(ops_list->head != NULL);
 	ops_list->num_ops = num_ops;
 
 	ops_t *cur_op = ops_list->head;

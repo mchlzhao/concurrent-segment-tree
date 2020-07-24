@@ -1,6 +1,8 @@
 #ifndef _GENERATE_OPS_H
 #define _GENERATE_OPS_H
 
+#include <stdbool.h>
+
 #define INC_MIN -5
 #define INC_MAX 5
 
