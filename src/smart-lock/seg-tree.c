@@ -58,14 +58,22 @@ void seg_tree_destroy(seg_tree_t *tree) {
 	_seg_tree_destroy(tree->root);
 }
 
-void _seg_tree_clean_node(seg_tree_node_t *node) {
-	if (node->lazy == 0) return;
+// returns true if lazy value is pushed down
+bool _seg_tree_clean_node(seg_tree_node_t *node, bool acq) {
+	if (node->lazy == 0) return acq;
+	bool ret = false;
 	node->value += node->lazy * (node->ran_r-node->ran_l);
 	if (!node->is_child) {
+		if (!acq) {
+			pthread_mutex_lock(&node->lc->lock);
+			pthread_mutex_lock(&node->rc->lock);
+		}
 		node->lc->lazy += node->lazy;
 		node->rc->lazy += node->lazy;
+		ret = true;
 	}
 	node->lazy = 0;
+	return ret;
 }
 
 void _seg_tree_check_bounds(seg_tree_node_t *root, int ran_l, int ran_r) {
@@ -75,20 +83,30 @@ void _seg_tree_check_bounds(seg_tree_node_t *root, int ran_l, int ran_r) {
 }
 
 int _seg_tree_query(seg_tree_node_t *node, int que_l, int que_r) {
-	_seg_tree_clean_node(node);
+	bool pushed = _seg_tree_clean_node(node, false);
 	int ret;
 	if (node->ran_r <= que_l || que_r <= node->ran_l) {
 		// query range does not intersect node range
 		ret = 0;
 		pthread_mutex_unlock(&node->lock);
+		if (pushed) {
+			pthread_mutex_unlock(&node->lc->lock);
+			pthread_mutex_unlock(&node->rc->lock);
+		}
 	} else if (que_l <= node->ran_l && node->ran_r <= que_r) {
 		// query range fully encapsulates node range
 		ret = node->value;
 		pthread_mutex_unlock(&node->lock);
+		if (pushed) {
+			pthread_mutex_unlock(&node->lc->lock);
+			pthread_mutex_unlock(&node->rc->lock);
+		}
 	} else {
 		// query range intersects both halves of current node range
-		pthread_mutex_lock(&node->lc->lock);
-		pthread_mutex_lock(&node->rc->lock);
+		if (!pushed) {
+			pthread_mutex_lock(&node->lc->lock);
+			pthread_mutex_lock(&node->rc->lock);
+		}
 		pthread_mutex_unlock(&node->lock);
 
 		ret = _seg_tree_query(node->lc, que_l, que_r) +
@@ -106,25 +124,35 @@ int seg_tree_query(seg_tree_t *tree, int que_l, int que_r) {
 }
 
 void _seg_tree_update(seg_tree_node_t *node, int ran_l, int ran_r, int inc) {
-	_seg_tree_clean_node(node);
+	bool pushed = _seg_tree_clean_node(node, false);
 	if (ran_l <= node->ran_l && node->ran_r <= ran_r) {
 		// query range fully encapsulates node range
 		node->lazy += inc;
-		_seg_tree_clean_node(node);
+		pushed = _seg_tree_clean_node(node, pushed);
 
 		pthread_mutex_unlock(&node->lock);
+		if (pushed) {
+			pthread_mutex_unlock(&node->lc->lock);
+			pthread_mutex_unlock(&node->rc->lock);
+		}
 	} else if (node->ran_r > ran_l && ran_r > node->ran_l) {
 		// query range intersects node range, but does not fully encapsulate
 		node->value += inc * (min(ran_r, node->ran_r) - max(ran_l, node->ran_l));
 
-		pthread_mutex_lock(&node->lc->lock);
-		pthread_mutex_lock(&node->rc->lock);
+		if (!pushed) {
+			pthread_mutex_lock(&node->lc->lock);
+			pthread_mutex_lock(&node->rc->lock);
+		}
 		pthread_mutex_unlock(&node->lock);
 
 		_seg_tree_update(node->lc, ran_l, ran_r, inc);
 		_seg_tree_update(node->rc, ran_l, ran_r, inc);
 	} else {
 		pthread_mutex_unlock(&node->lock);
+		if (pushed) {
+			pthread_mutex_unlock(&node->lc->lock);
+			pthread_mutex_unlock(&node->rc->lock);
+		}
 	}
 }
 

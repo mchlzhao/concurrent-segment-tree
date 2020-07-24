@@ -7,7 +7,7 @@ void _seg_tree_init(seg_tree_node_t *node, int ran_l, int ran_r);
 
 void _seg_tree_destroy(seg_tree_node_t *node);
 
-void _seg_tree_clean_node(seg_tree_node_t *node);
+bool _seg_tree_clean_node(seg_tree_node_t *node, bool acq);
 
 void _seg_tree_check_bounds(seg_tree_node_t *root, int ran_l, int ran_r);
 
